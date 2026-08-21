@@ -60,7 +60,10 @@ y = df["label"]
 # ----------------------------------
 
 vectorizer = TfidfVectorizer(
-    max_features=5000
+    max_features=50000,        # 5000 → 50000
+    ngram_range=(1, 2),        # bigrams bhi include karo
+    sublinear_tf=True,         # better scaling
+    min_df=2,
 )
 
 X = vectorizer.fit_transform(X_text)
@@ -86,7 +89,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 print("\nTraining SVM...")
 
 model = LinearSVC(
-    max_iter=1000
+    max_iter=2000,
+    C=0.5, 
 )
 
 model.fit(

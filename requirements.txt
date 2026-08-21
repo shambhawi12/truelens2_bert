@@ -9,6 +9,6 @@ requests
 trafilatura
 lxml_html_clean
 feedparser
-requests
 python-dotenv
-feedparser
+torch>=2.0.0
+transformers>=4.40.0
