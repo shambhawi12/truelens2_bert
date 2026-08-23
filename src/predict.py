@@ -13,15 +13,25 @@ MODEL_PATH = "shambhawi12/truthlens-distilbert"
 GOOGLE_API_KEY = os.getenv("GOOGLE_FACT_CHECK_API_KEY")
 
 # Load once at startup
-print("Loading DistilBERT model...")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
-model.eval()
+from functools import lru_cache
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = model.to(device)
-print(f"Model loaded on {device} ✅")
 
+@lru_cache(maxsize=1)
+def load_model():
+    """Load the DistilBERT model only when it is actually needed."""
+    print("Loading DistilBERT model...")
+
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+
+    model.eval()
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    print(f"Model loaded on {device} ✅")
+
+    return tokenizer, model, device
 
 # ─────────────────────────────────────────────
 # Fact Check API
@@ -101,6 +111,8 @@ def predict_news(text: str) -> dict:
     """
 
     # ── Step 1: BERT Prediction ──
+    tokenizer, model, device = load_model()
+
     inputs = tokenizer(
         str(text),
         truncation=True,
