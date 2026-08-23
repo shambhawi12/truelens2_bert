@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Model path
-MODEL_PATH = "models/distilbert_best"
+MODEL_PATH = "shambhawi12/truthlens-distilbert"
 GOOGLE_API_KEY = os.getenv("GOOGLE_FACT_CHECK_API_KEY")
 
 # Load once at startup

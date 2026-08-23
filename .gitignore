@@ -3,7 +3,10 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
-
-models/
-
-models/
+models/fake_news_model.pkl
+models/random_forest_model.pkl
+models/svm_model.pkl
+models/vectorizer.pkl
+models/distilbert_best/
+data/
+database/
