@@ -36,7 +36,7 @@ TrueLens goes further — it asks:
 ```
 ❓ Has this claim been fact-checked before?
 📰 Is related reporting available?
-🛡️  Are trusted news sources covering something similar?
+🛡️ Are trusted news sources covering something similar?
 ```
 
 It combines a **multilingual DistilBERT classifier** with **Google Fact Check results** and **related-news evidence** — giving you context, not just a verdict.
