@@ -1,4 +1,4 @@
-﻿.venv/
+.venv/
 .env
 __pycache__/
 *.pyc
@@ -10,3 +10,4 @@ models/vectorizer.pkl
 models/distilbert_best/
 data/
 database/
+venv/
