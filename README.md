@@ -1,17 +1,19 @@
-<div align="center"> 
+<div align="center">
 
 ### AI-powered misinformation detection with evidence-backed verification
 
-[Model](https://huggingface.co/shambhawi12/truthlens-distilbert) ([image](https://img.shields.io/badge/%F0%9F%A4%97_Model-truthlens--distilbert-yellow?style=for-the-badge))
-[Streamlit App](https://truelens2bert-kav4vm9cxepb3dqksuyhx2.streamlit.app/) ([image](https://img.shields.io/badge/Streamlit-Live_App-FF4B4B?style=for-the-badge\&logo=streamlit\&logoColor=white))
-[Python](https://python.org/) ([image](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge\&logo=python\&logoColor=white))
-[Accuracy](https://huggingface.co/shambhawi12/truthlens-distilbert) ([image](https://img.shields.io/badge/Model_Accuracy-94%25-brightgreen?style=for-the-badge))
+[![Model](https://img.shields.io/badge/%F0%9F%A4%97_Model-truthlens--distilbert-yellow?style=for-the-badge)](https://huggingface.co/shambhawi12/truthlens-distilbert)
+[![Live App](https://img.shields.io/badge/Streamlit-Live_App-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://truelens2bert-kav4vm9cxepb3dqksuyhx2.streamlit.app/)
+[![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
+[![Accuracy](https://img.shields.io/badge/Model_Accuracy-94%25-brightgreen?style=for-the-badge)](https://huggingface.co/shambhawi12/truthlens-distilbert)
 
-<br/> 
+**🚀 Live Project:** [TrueLens](https://truelens2bert-kav4vm9cxepb3dqksuyhx2.streamlit.app/)
+
+<br/>
 
 > **"A prediction tells you what the model thinks. Evidence helps you understand why you should investigate further."**
 
-</div> 
+</div>
 
 ---
 
@@ -49,7 +51,7 @@ It combines a **multilingual DistilBERT classifier** with **Google Fact Check re
 | 🔍 **Google Fact Check**   | Surfaces existing fact-check reviews for the claim       |
 | 📰 **Related News Search** | Checks for related coverage across trusted sources       |
 | 🔗 **URL Analysis**        | Paste a URL — TrueLens extracts and analyzes the article |
-| 🌐 **Multilingual**        | Uses DistilBERT Multilingual with 104-language coverage  |
+| 🌐 **Multilingual**        | Supports analysis of English and Hindi news content  |
 | 📊 **Confidence Scores**   | Shows fake/real probabilities, not just a label          |
 
 ---
@@ -72,7 +74,7 @@ It combines a **multilingual DistilBERT classifier** with **Google Fact Check re
 │                 ┌────────────────────────┐                          │
 │                 │  Multilingual          │                          │
 │                 │  DistilBERT Classifier │                          │
-│                 │  104 languages         │                          │
+│                 │  English + Hindi       │                          │
 │                 └────────┬───────────────┘                          │
 │                          │                                          │
 │              ┌───────────┴────────────┐                             │
@@ -114,7 +116,7 @@ TrueLens uses **`distilbert-base-multilingual-cased`** fine-tuned on a combined 
 | Parameter Value     |                               |
 | ------------------- | ----------------------------- |
 | Base Model          | DistilBERT Multilingual Cased |
-| Language Coverage   | 104 languages                 |
+| Training Languages  | English + Hindi               |
 | Max Sequence Length | 128 tokens                    |
 | Batch Size          | 16                            |
 | Learning Rate       | 2e-5                          |
@@ -406,7 +408,17 @@ It is intended to **encourage verification and critical reading** — not replac
 
 ## 👥 Contributors
 
-<table> <tr> <td align="center"> <b>TrueLens Contributors</b><br/> Project development · ML/NLP · Application development · Verification pipeline · Experimentation · Documentation </td> </tr> </table> 
+<table>
+<tr>
+<td align="center">
+
+<b>Shambhawi & Samiksha Verma</b><br/>
+
+Project development · ML/NLP · Application development · Verification pipeline · Experimentation · Documentation
+
+</td>
+</tr>
+</table>
 
 TrueLens was developed collaboratively as a practical project focused on real-world misinformation detection and verification.
 
