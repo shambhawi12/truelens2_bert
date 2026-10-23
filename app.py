@@ -1,209 +1,465 @@
-import streamlit as st
-from src.scraper import scrape_article
-from src.predict import predict_news
-from src.news_search import search_related_news
-from truthlens_styles import TRUTHLENS_CSS
+import threading
+from datetime import date
+from html import escape
 
-# ── Page config ───────────────────────────────────────────────
+import streamlit as st
+
+from site_config import FAVICON_PATH
+from src.scraper import scrape_article
+from src.news_search import search_related_news
+from truthlens_styles import NAV_HTML, TRUTHLENS_CSS
+
+# Page config
 st.set_page_config(
-    page_title="TruthLens — Fake News Detection",
-    page_icon="🔍",
+    page_title="TruthLens: Fake News Detection",
+    page_icon=FAVICON_PATH,
     layout="centered",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 
-# ── Inject CSS ────────────────────────────────────────────────
 st.markdown(TRUTHLENS_CSS, unsafe_allow_html=True)
 
-# ── Hero ──────────────────────────────────────────────────────
-st.markdown("""
-<div class="tl-hero">
-    <div class="tl-hero-badge">Live Analysis &nbsp;·&nbsp; 94% Accuracy</div>
-    <h1>Detect fake news with<br><span>AI precision</span></h1>
-    <p class="tl-hero-sub">
-        Powered by <strong>DistilBERT Multilingual</strong> — paste an article or drop a URL
-    </p>
+
+# Speed: load the model in the background while the page draws
+@st.cache_resource(show_spinner=False)
+def _warm_up() -> bool:
+    def _load():
+        try:
+            import src.predict  # noqa: F401
+        except Exception:
+            pass
+
+    threading.Thread(target=_load, daemon=True).start()
+    return True
+
+
+_warm_up()
+
+
+# Speed: cache repeat work so the same input is not processed twice
+@st.cache_data(show_spinner=False, ttl=3600, max_entries=64)
+def cached_predict(text: str) -> dict:
+    from src.predict import predict_news
+
+    return predict_news(text)
+
+
+@st.cache_data(show_spinner=False, ttl=900, max_entries=32)
+def cached_scrape(url: str) -> str:
+    text = scrape_article(url)
+    if not text:
+        raise ValueError("No article text extracted")
+    return text
+
+
+@st.cache_data(show_spinner=False, ttl=600, max_entries=64)
+def cached_search(text: str) -> list:
+    return search_related_news(text) or []
+
+
+# Helpers
+def flatten(html: str) -> str:
+    """Strip leading whitespace so Markdown never treats indented HTML as code."""
+    return " ".join(line.strip() for line in html.splitlines() if line.strip())
+
+
+def variant() -> str:
+    """Alternate between two identical animation sets so they replay on every run."""
+    return "a" if st.session_state.get("run_id", 0) % 2 == 0 else "b"
+
+
+def reveal(html: str, delay: float = 0) -> str:
+    """Wrap a snippet in the staggered reveal animation."""
+    return f'<div class="v-{variant()}" style="--d:{delay}s">{flatten(html)}</div>'
+
+
+def show(html: str, delay=None, target=None) -> None:
+    body = flatten(html) if delay is None else reveal(html, delay)
+    (target if target is not None else st).markdown(body, unsafe_allow_html=True)
+
+
+def show_loader(target, text: str) -> None:
+    target.markdown(
+        f'<div class="tl-loader"><div class="tl-loader-text">{escape(text)}</div>'
+        '<div class="tl-track"><i></i></div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def safe_url(value) -> str:
+    """Allow only http and https links."""
+    if isinstance(value, str) and value.lower().startswith(("http://", "https://")):
+        return escape(value, quote=True)
+    return "#"
+
+
+def to_pct(value) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(100.0, number))
+
+
+def count(number: int) -> str:
+    return f'<span class="tl-count" style="--t:{number}" aria-label="{number}%"></span>'
+
+
+SKELETON_HTML = '<div class="tl-skel"><i></i></div>' * 3
+
+# Header and hero
+st.markdown(NAV_HTML + '<div id="tl-top"></div>', unsafe_allow_html=True)
+show("""
+<div class="tl-hero-grid">
+    <div>
+        <h1 class="tl-intro" style="--d:0.05s">Check a news article <span class="tl-ul">before you share it</span></h1>
+        <p class="tl-hero-sub tl-intro" style="--d:0.18s">
+            Paste the article text or enter a link. A multilingual DistilBERT model
+            estimates whether it is real or fake, and TruthLens lists related coverage
+            so you can check the claim yourself.
+        </p>
+    </div>
+    <div class="tl-visual tl-intro" style="--d:0.3s" aria-hidden="true">
+        <div class="tl-float">
+            <div class="tl-stage">
+                <div class="tl-sheet s3"></div>
+                <div class="tl-sheet s2"></div>
+                <div class="tl-sheet s1">
+                    <div class="tl-l t"></div>
+                    <div class="tl-l w100"></div>
+                    <div class="tl-l w92 m" style="--md:0.2s"></div>
+                    <div class="tl-l w85"></div>
+                    <div class="tl-l w100"></div>
+                    <div class="tl-l w60 m" style="--md:3s"></div>
+                    <div class="tl-l w95"></div>
+                    <div class="tl-l w80"></div>
+                    <div class="tl-l w100 m" style="--md:4.5s"></div>
+                    <div class="tl-l w50"></div>
+                </div>
+                <div class="tl-lens-shadow"></div>
+                <div class="tl-lens"></div>
+            </div>
+            <div class="tl-floor"></div>
+        </div>
+    </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
-# ── Session state ─────────────────────────────────────────────
-if "option" not in st.session_state:
-    st.session_state.option = "Text"
+# Input (anchor target for the navbar Analyze Article button; it only scrolls here)
+st.markdown('<div id="analyze-article" class="tl-anchor"></div>', unsafe_allow_html=True)
+option = st.radio(
+    "Input type",
+    ["Text", "URL"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
 
-# ── Input card ────────────────────────────────────────────────
-# NOTE: this uses a real Streamlit container (border=True) instead of
-# hand-written <div class="tl-card">...</div> markdown split across two
-# separate st.markdown() calls. That old pattern never actually wrapped
-# the widgets — each st.markdown() is its own isolated DOM node, so the
-# opening div rendered alone, auto-closed itself, and just sat there as
-# an empty padded white box. That was the blank box under the hero.
-with st.container(border=True):
-    option = st.radio("Choose input type", ["Text", "URL"], horizontal=True)
+article_text = ""
+url = ""
 
-    article_text = ""
-    result = None
-
+with st.form("analyze_form", clear_on_submit=False):
     if option == "Text":
         article_text = st.text_area(
             "News article",
             height=220,
-            placeholder="Paste the news article text here…",
+            placeholder="Paste the news article text here",
         )
     else:
         url = st.text_input(
             "Article URL",
-            placeholder="https://bbc.com/news/…",
+            placeholder="https://www.bbc.com/news/...",
         )
+    analyze_clicked = st.form_submit_button("Analyze article")
 
-    analyze_clicked = st.button("🔍 Analyze Article")
 
-# ── Analysis ──────────────────────────────────────────────────
-if analyze_clicked:
+def run_analysis(option: str, article_text: str, url: str) -> None:
+    """Run the analysis and render results. Returns early on errors."""
+    st.session_state["run_id"] = st.session_state.get("run_id", 0) + 1
 
-    if option == "Text":
-        if not article_text.strip():
-            st.error("Please paste some article text to analyze.")
-            st.stop()
+    loader = st.empty()
+    try:
+        if option == "Text":
+            if not article_text.strip():
+                st.error("Please paste some article text to analyze.")
+                return
+        else:
+            if not url.strip():
+                st.error("Please enter a URL to analyze.")
+                return
 
-    elif option == "URL":
-        if not url.strip():
-            st.error("Please enter a URL to analyze.")
-            st.stop()
+            show_loader(loader, "Extracting article")
+            try:
+                article_text = cached_scrape(url.strip())
+            except Exception:
+                article_text = ""
 
-        with st.spinner("Extracting article…"):
-            article_text = scrape_article(url)
+            if not article_text:
+                st.error(
+                    "Could not extract the article. Try a link from BBC, Reuters, "
+                    "AP News or another major outlet, or paste the text instead."
+                )
+                return
 
-        if not article_text:
-            st.error("Couldn't extract the article. Try BBC, Reuters, AP News, or other major outlets.")
-            st.stop()
+        show_loader(loader, "Analyzing article")
+        result = cached_predict(article_text)
+    finally:
+        loader.empty()
 
-    with st.spinner("Running DistilBERT analysis…"):
-        result = predict_news(article_text)
-
-    label      = result["label"]
-    confidence = result["confidence"]
-    fake_prob  = result["fake_probability"]
-    real_prob  = result["real_probability"]
+    label = result["label"]
+    confidence = int(round(to_pct(result["confidence"])))
+    fake_exact = to_pct(result["fake_probability"])
+    real_exact = to_pct(result["real_probability"])
+    fake_int = int(round(fake_exact))
+    real_int = int(round(real_exact))
+    if abs(fake_exact + real_exact - 100) < 1.5:
+        real_int = 100 - fake_int
 
     verdict_class = "real" if label == "REAL" else "fake"
-    verdict_icon  = "✅" if label == "REAL" else "⚠️"
-    verdict_text  = "Real News" if label == "REAL" else "Fake News"
+    verdict_text = "Likely real" if label == "REAL" else "Likely fake"
 
-    # ── Verdict card ──────────────────────────────────────────
-    st.markdown(f"""
-    <div class="tl-result {verdict_class}">
-        <div class="tl-result-icon">{verdict_icon}</div>
-        <div>
-            <div class="tl-result-label">{verdict_text}</div>
-            <div class="tl-result-conf">Model confidence: {confidence}%</div>
+    # Verdict
+    show(f"""
+    <div class="tl-verdict {verdict_class}">
+        <div class="tl-coin"><div class="tl-badge {verdict_class}"></div></div>
+        <div class="tl-verdict-main">
+            <div class="tl-kicker">Model verdict</div>
+            <div class="tl-verdict-label">{verdict_text}</div>
+        </div>
+        <div class="tl-verdict-score">
+            <div class="tl-verdict-num">{count(confidence)}</div>
+            <div class="tl-verdict-cap">model confidence</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """, delay=0)
 
-    # ── Probability metrics ───────────────────────────────────
-    st.markdown(f"""
-    <div class="tl-metrics">
-        <div class="tl-metric">
-            <div class="tl-metric-value" style="color:#EF4444">{fake_prob}%</div>
-            <div class="tl-metric-label">Fake probability</div>
+    # Probability split
+    show(f"""
+    <div class="tl-split">
+        <div class="tl-split-head">
+            <span>Fake <b>{count(fake_int)}</b></span>
+            <span>Real <b>{count(real_int)}</b></span>
         </div>
-        <div class="tl-metric">
-            <div class="tl-metric-value" style="color:#10B981">{real_prob}%</div>
-            <div class="tl-metric-label">Real probability</div>
+        <div class="tl-split-track">
+            <div class="tl-split-fake" style="--w:{fake_exact:.2f}%"></div>
+            <div class="tl-split-real" style="--w:{real_exact:.2f}%"></div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """, delay=0.1)
 
-    # ── Confidence bar ────────────────────────────────────────
-    # Width is driven by the --target-width CSS variable, animated via
-    # @keyframes in the stylesheet (see tl-fill-bar), so the bar visibly
-    # fills up on each render instead of appearing already-full.
-    st.markdown(f"""
-    <div class="tl-progress-wrap">
-        <div class="tl-progress-label">
-            <span>Confidence</span>
-            <span>{confidence}%</span>
-        </div>
-        <div class="tl-progress-track">
-            <div class="tl-progress-fill {verdict_class}" style="--target-width:{confidence}%"></div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── Fact check ────────────────────────────────────────────
+    # Fact check
     if result.get("fact_check"):
         fact_url_html = ""
         if result.get("fact_url"):
-            fact_url_html = f'<a href="{result["fact_url"]}" target="_blank">🔗 Read full fact-check</a>'
-        st.markdown(f"""
+            fact_url_html = (
+                f'<a href="{safe_url(result["fact_url"])}" target="_blank" '
+                f'rel="noopener noreferrer">Read the full fact check</a>'
+            )
+        show(f"""
         <div class="tl-factcheck">
-            <div class="tl-factcheck-icon">🔎</div>
-            <div class="tl-factcheck-body">
-                <p>{result["fact_check"]}</p>
-                {fact_url_html}
-            </div>
+            <div class="tl-kicker">Fact check</div>
+            <p>{escape(str(result["fact_check"]))}</p>
+            {fact_url_html}
         </div>
-        """, unsafe_allow_html=True)
+        """, delay=0.2)
 
     if result.get("verification_note"):
-        st.markdown(f"""
-        <div class="tl-warning">
-            <span>⚡</span>
-            <span>{result["verification_note"]}</span>
+        show(f"""
+        <div class="tl-note">{escape(str(result["verification_note"]))}</div>
+        """, delay=0.25)
+
+    # Related coverage: skeleton first, real rows once the search returns
+    show('<div class="tl-section"><span>Related trusted sources</span></div>', delay=0.3)
+    related_slot = st.empty()
+    related_slot.markdown(SKELETON_HTML, unsafe_allow_html=True)
+
+    try:
+        related_news = cached_search(article_text)
+    except Exception:
+        related_news = []
+
+    rows = []
+    for index, article in enumerate(related_news):
+        title = escape(str(article.get("title") or "Untitled"))
+        source = escape(str(article.get("source") or "Unknown source"))
+        score = article.get("source_score")
+        raw_link = article.get("url") or "#"
+        link = safe_url(raw_link)
+
+        short_link = str(raw_link).replace("https://", "").replace("http://", "")
+        if len(short_link) > 60:
+            short_link = short_link[:60] + "..."
+        short_link = escape(short_link)
+
+        rating_html = ""
+        if score not in (None, ""):
+            try:
+                value = float(score)
+                tone = "hi" if value >= 4 else "mid" if value >= 3 else "lo"
+            except (TypeError, ValueError):
+                tone = ""
+            rating_html = (
+                '<span class="tl-article-sep">&middot;</span>'
+                f'<span class="tl-rate {tone}">Source rating {escape(str(score))}/5</span>'
+            )
+
+        rows.append(reveal(f"""
+        <a class="tl-article-link" href="{link}" target="_blank" rel="noopener noreferrer">
+            <div class="tl-article">
+                <div class="tl-article-title">{title}</div>
+                <div class="tl-article-meta"><span>{source}</span>{rating_html}</div>
+                <span class="tl-article-url">{short_link}</span>
+            </div>
+        </a>
+        """, delay=round(0.05 + index * 0.07, 2)))
+
+    if not rows:
+        rows.append(reveal("""
+        <div class="tl-note">
+            No related sources were found for this article. Try pasting more of the text.
         </div>
-        """, unsafe_allow_html=True)
+        """, delay=0.05))
 
-    # ── Related news ──────────────────────────────────────────
-    st.markdown("""
-    <div class="tl-divider">
-        <div class="tl-divider-line"></div>
-        <div class="tl-divider-text">Related trusted sources</div>
-        <div class="tl-divider-line"></div>
+    related_slot.markdown(" ".join(rows), unsafe_allow_html=True)
+
+    show("""
+    <div class="tl-disclaimer">
+        This result comes from a machine learning model and can be wrong. Treat it as a
+        starting point and check the claims against sources you trust before you share
+        or act on it.
     </div>
-    """, unsafe_allow_html=True)
+    """, delay=0.2)
 
-    with st.spinner("Finding corroborating sources…"):
-        related_news = search_related_news(article_text)
 
-    if related_news:
-        for article in related_news:
-            title  = article.get("title", "Untitled")
-            source = article.get("source", "Unknown")
-            score  = article.get("source_score", "—")
-            link   = article.get("url", "#")
+if analyze_clicked:
+    run_analysis(option, article_text, url)
 
-            short_link = link.replace("https://", "").replace("http://", "")
-            if len(short_link) > 55:
-                short_link = short_link[:55] + "…"
-
-            st.markdown(f"""
-            <a href="{link}" target="_blank" style="text-decoration:none">
-                <div class="tl-article">
-                    <div class="tl-article-icon">📰</div>
-                    <div class="tl-article-body">
-                        <div class="tl-article-title">{title}</div>
-                        <div class="tl-article-meta">
-                            <span class="tl-article-source">{source}</span>
-                            <span class="tl-article-sep">·</span>
-                            <span class="tl-article-score">★ {score}/5</span>
-                        </div>
-                        <span class="tl-article-link">{short_link}</span>
-                    </div>
-                </div>
-            </a>
-            """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="tl-warning">
-            <span>🔍</span>
-            <span>No corroborating sources found for this article. Try refining the text.</span>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # ── ML disclaimer ─────────────────────────────────────────
-    st.markdown("""
-    <div class="tl-warning" style="margin-top: 1.5rem;">
-        <span>🤖</span>
-        <span>This result is generated by a machine learning model and is intended to provide an informative starting point. While every effort is made to ensure accuracy, users are kindly encouraged to verify the information through reliable and trusted sources before drawing any conclusions.</span>
+# How it works (always rendered so the navbar anchor works after an analysis too)
+show("""
+<div id="how-it-works" class="tl-anchor"></div>
+<div class="tl-steps">
+    <div class="tl-step tl-intro" style="--d:0.45s">
+        <div class="tl-step-num">01</div>
+        <div class="tl-step-title">Add an article</div>
+        <p class="tl-step-text">Paste the text or enter the link to a news page.</p>
     </div>
-    """, unsafe_allow_html=True)
+    <div class="tl-step tl-intro" style="--d:0.55s">
+        <div class="tl-step-num">02</div>
+        <div class="tl-step-title">The model reads it</div>
+        <p class="tl-step-text">A multilingual DistilBERT model scores how likely the text is real or fake.</p>
+    </div>
+    <div class="tl-step tl-intro" style="--d:0.65s">
+        <div class="tl-step-num">03</div>
+        <div class="tl-step-title">Check the context</div>
+        <p class="tl-step-text">Related coverage and fact checks are listed so you can verify the claim.</p>
+    </div>
+</div>
+""")
+
+# Features, About, FAQ (only facts that are visible in this codebase)
+show("""
+<div id="features" class="tl-block tl-anchor">
+    <h2>Features</h2>
+    <div class="tl-feat-grid">
+        <div class="tl-feat"><b>Text or link</b><span>Paste the article text or enter a URL and the article is extracted for you.</span></div>
+        <div class="tl-feat"><b>Real or fake estimate</b><span>A multilingual DistilBERT model returns a verdict, a confidence score and the fake/real probability split.</span></div>
+        <div class="tl-feat"><b>Fact checks</b><span>When a matching fact check is found, it is shown with a link to the full write-up.</span></div>
+        <div class="tl-feat"><b>Related coverage</b><span>Related articles are listed with a source rating so you can read further and check the claim yourself.</span></div>
+    </div>
+</div>
+<div id="about" class="tl-block tl-anchor">
+    <h2>About TruthLens</h2>
+    <p>
+        In a world where misleading information can spread quickly, it is
+        important to pause and check a claim before sharing it. TruthLens is
+        a news-analysis tool designed to help you take that first step.
+        You can paste an article's text or provide a link for article
+        extraction. A multilingual DistilBERT model estimates whether the
+        article is likely to be real or fake, while available fact checks
+        and related coverage offer additional context to explore.
+        TruthLens is designed to support your own verification process,
+        not replace careful reading or trusted reporting. A model prediction
+        is an estimate—not proof—and should be considered alongside
+        independent sources and evidence.
+    </p>
+</div>
+<div id="faq" class="tl-block tl-anchor tl-faq">
+    <h2>FAQ</h2>
+    <details><summary>Is the result proof that an article is real or fake?</summary>
+        <p>No. It comes from a machine learning model and can be wrong. Related sources are for comparison and do not prove a claim true or false.</p></details>
+    <details><summary>What if a link cannot be read?</summary>
+        <p>Try a link from a major outlet such as BBC, Reuters or AP News, or paste the article text instead.</p></details>
+    <details><summary>What do the related sources show?</summary>
+        <p>They list coverage on the same topic, with a source rating, so you can read other reports and compare.</p></details>
+    <details>
+    <summary>Can I analyze Hindi news articles?</summary>
+    <p>
+        TruthLens uses a multilingual DistilBERT model. Its performance
+        may vary by language, writing style, topic and article quality.
+        Always cross-check important claims with reliable sources.
+    </p>
+</details>
+
+<details>
+    <summary>What does the confidence score mean?</summary>
+    <p>
+        The score represents the model's confidence in its prediction
+        according to its own scoring process. It is not the probability
+        that a news claim is objectively true, and a high score does
+        not guarantee that the result is correct.
+    </p>
+</details>
+
+<details>
+    <summary>Why might no fact check appear?</summary>
+    <p>
+        A matching fact check may not be available for every article or
+        claim. If no fact check appears, try reviewing related coverage
+        and searching for independent reporting about the specific claim.
+    </p>
+</details>
+
+<details>
+    <summary>Does TruthLens verify every statement in an article?</summary>
+    <p>
+        No. A model prediction about an article does not establish the
+        truth of every statement it contains. Check individual claims
+        against reliable, independent evidence before relying on them.
+    </p>
+</details>
+
+<details>
+    <summary>Does TruthLens store the articles I submit?</summary>
+    <p>
+        Data handling depends on how the application and its hosting
+        environment are configured. Please review the Privacy Policy
+        for details about processing, caching, retention and any
+        third-party services before submitting sensitive information.
+    </p>
+</details>
+</div>
+""")
+
+# Footer
+show("""
+<div class="tl-footer">
+    <div>
+        <div class="tl-brand"><span class="tl-brand-mark"></span><span>TruthLens</span></div>
+        <p class="tl-footer-tag">Check the context. Question the claim.</p>
+        <p class="tl-footer-desc">A multilingual DistilBERT model estimates whether a news article is real or fake,
+        and TruthLens lists related coverage so you can check the claim yourself.</p>
+    </div>
+    <div class="tl-footer-links">
+        <a href="#how-it-works" target="_self">How It Works</a>
+        <a href="#features" target="_self">Features</a>
+        <a href="#about" target="_self">About</a>
+        <a href="#faq" target="_self">FAQ</a>
+    </div>
+</div>
+""")
+footer_left, footer_right, _ = st.columns([1, 1.4, 3])
+with footer_left:
+    st.page_link("pages/1_Privacy_Policy.py", label="Privacy Policy")
+with footer_right:
+    st.page_link("pages/2_Terms_and_Conditions.py", label="Terms and Conditions")
+show(f'<div class="tl-footer-note">&copy; {date.today().year} TruthLens</div>')
+CONTACT_HREF = ""

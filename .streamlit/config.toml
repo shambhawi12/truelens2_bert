@@ -1,7 +1,14 @@
 [theme]
-base="light"
-primaryColor="#4CAF50"         # main accent color
-backgroundColor="#FFFFFF"      # page background
-secondaryBackgroundColor="#F5F5F5" # sidebar background
-textColor="#000000"            # text color
-font="sans serif"
+base = "light"
+primaryColor = "#1F3A5F"
+backgroundColor = "#F6F5F1"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#14181F"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+showSidebarNavigation = false
+
+[browser]
+gatherUsageStats = false
