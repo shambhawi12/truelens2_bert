@@ -368,98 +368,79 @@ show("""
 </div>
 <div id="about" class="tl-block tl-anchor">
     <h2>About TruthLens</h2>
-    <p>
-        In a world where misleading information can spread quickly, it is
-        important to pause and check a claim before sharing it. TruthLens is
-        a news-analysis tool designed to help you take that first step.
-        You can paste an article's text or provide a link for article
-        extraction. A multilingual DistilBERT model estimates whether the
-        article is likely to be real or fake, while available fact checks
-        and related coverage offer additional context to explore.
-        TruthLens is designed to support your own verification process,
-        not replace careful reading or trusted reporting. A model prediction
-        is an estimate—not proof—and should be considered alongside
-        independent sources and evidence.
-    </p>
+    <div class="tl-about-grid">
+        <div class="tl-about-text">
+            <p>TruthLens is a small tool for people who want to pause before sharing a news article. You give it the
+            text of a story, or a link to one, and it returns an estimate of whether the writing looks real or fake,
+            along with a confidence score and the split between the two probabilities.</p>
+            <p>The estimate comes from a multilingual DistilBERT model that reads the article text. Alongside it,
+            TruthLens shows a matching fact check when one is found, and lists related coverage from other outlets
+            with a source rating, so you can compare what different sources say about the same claim.</p>
+            <p>The result is meant to be a starting point, not a final verdict. A machine learning model can be wrong,
+            so the related sources and fact checks are there to help you do the last step yourself: read, compare
+            and decide.</p>
+        </div>
+        <aside class="tl-glance">
+            <div class="tl-glance-title">At a glance</div>
+            <div class="tl-glance-row"><span>You provide</span><b>Article text or a link</b></div>
+            <div class="tl-glance-row"><span>Model</span><b>Multilingual DistilBERT</b></div>
+            <div class="tl-glance-row"><span>You get</span><b>Verdict, confidence and probability split</b></div>
+            <div class="tl-glance-row"><span>For context</span><b>Fact checks and related sources</b></div>
+        </aside>
+    </div>
 </div>
 <div id="faq" class="tl-block tl-anchor tl-faq">
     <h2>FAQ</h2>
     <details><summary>Is the result proof that an article is real or fake?</summary>
         <p>No. It comes from a machine learning model and can be wrong. Related sources are for comparison and do not prove a claim true or false.</p></details>
+    <details><summary>What does the confidence score mean?</summary>
+        <p>It shows how sure the model is about its own verdict. It is not a measure of how true the article is, so a high score can still be mistaken.</p></details>
+    <details><summary>What is the Fake and Real split?</summary>
+        <p>It shows how the model divides its estimate between the two outcomes. The two values add up to 100%, and the verdict follows the larger one.</p></details>
+    <details><summary>Should I paste the text or use a link?</summary>
+        <p>Both work. A link is quicker, but some pages cannot be read automatically. If a link fails, paste the article text instead.</p></details>
     <details><summary>What if a link cannot be read?</summary>
         <p>Try a link from a major outlet such as BBC, Reuters or AP News, or paste the article text instead.</p></details>
     <details><summary>What do the related sources show?</summary>
         <p>They list coverage on the same topic, with a source rating, so you can read other reports and compare.</p></details>
-    <details>
-    <summary>Can I analyze Hindi news articles?</summary>
-    <p>
-        TruthLens uses a multilingual DistilBERT model. Its performance
-        may vary by language, writing style, topic and article quality.
-        Always cross-check important claims with reliable sources.
-    </p>
-</details>
-
-<details>
-    <summary>What does the confidence score mean?</summary>
-    <p>
-        The score represents the model's confidence in its prediction
-        according to its own scoring process. It is not the probability
-        that a news claim is objectively true, and a high score does
-        not guarantee that the result is correct.
-    </p>
-</details>
-
-<details>
-    <summary>Why might no fact check appear?</summary>
-    <p>
-        A matching fact check may not be available for every article or
-        claim. If no fact check appears, try reviewing related coverage
-        and searching for independent reporting about the specific claim.
-    </p>
-</details>
-
-<details>
-    <summary>Does TruthLens verify every statement in an article?</summary>
-    <p>
-        No. A model prediction about an article does not establish the
-        truth of every statement it contains. Check individual claims
-        against reliable, independent evidence before relying on them.
-    </p>
-</details>
-
-<details>
-    <summary>Does TruthLens store the articles I submit?</summary>
-    <p>
-        Data handling depends on how the application and its hosting
-        environment are configured. Please review the Privacy Policy
-        for details about processing, caching, retention and any
-        third-party services before submitting sensitive information.
-    </p>
-</details>
+    <details><summary>How do I read the source rating?</summary>
+        <p>The rating is out of 5 and describes the outlet, not the individual article. The dot beside it is green for 4 and above, amber for 3 and above, and red below 3.</p></details>
+    <details><summary>Why is there no fact check on my result?</summary>
+        <p>A fact check appears only when a matching one is found. If there is none, that does not mean the claim is true, so check it against the related sources.</p></details>
+    <details><summary>Does it work with articles that are not in English?</summary>
+        <p>The model is multilingual, so it is not limited to English. Results can still vary between languages and topics, so treat them with the same care.</p></details>
+    <details><summary>How is my data handled?</summary>
+        <p>Please read the Privacy Policy and the Terms and Conditions, linked at the bottom of this page, for details on how your input is handled.</p></details>
 </div>
 """)
 
-# Footer
-show("""
-<div class="tl-footer">
-    <div>
-        <div class="tl-brand"><span class="tl-brand-mark"></span><span>TruthLens</span></div>
-        <p class="tl-footer-tag">Check the context. Question the claim.</p>
-        <p class="tl-footer-desc">A multilingual DistilBERT model estimates whether a news article is real or fake,
-        and TruthLens lists related coverage so you can check the claim yourself.</p>
+# Footer: one dark panel (the key gives the container its own CSS class)
+with st.container(key="tl_footer"):
+    show("""
+    <div class="tl-footer">
+        <div>
+            <div class="tl-brand"><span class="tl-brand-mark"></span><span>TruthLens</span></div>
+            <p class="tl-footer-tag">Check the context. Question the claim.</p>
+            <p class="tl-footer-desc">A multilingual DistilBERT model estimates whether a news article is real or fake,
+            and TruthLens lists related coverage so you can check the claim yourself.</p>
+            <a class="tl-footer-cta" href="#analyze-article" target="_self">Analyze an article</a>
+        </div>
+        <div>
+            <div class="tl-footer-head">Explore</div>
+            <div class="tl-footer-links">
+                <a href="#how-it-works" target="_self">How It Works</a>
+                <a href="#features" target="_self">Features</a>
+                <a href="#about" target="_self">About</a>
+                <a href="#faq" target="_self">FAQ</a>
+            </div>
+        </div>
     </div>
-    <div class="tl-footer-links">
-        <a href="#how-it-works" target="_self">How It Works</a>
-        <a href="#features" target="_self">Features</a>
-        <a href="#about" target="_self">About</a>
-        <a href="#faq" target="_self">FAQ</a>
-    </div>
-</div>
-""")
-footer_left, footer_right, _ = st.columns([1, 1.4, 3])
-with footer_left:
-    st.page_link("pages/1_Privacy_Policy.py", label="Privacy Policy")
-with footer_right:
-    st.page_link("pages/2_Terms_and_Conditions.py", label="Terms and Conditions")
-show(f'<div class="tl-footer-note">&copy; {date.today().year} TruthLens</div>')
-CONTACT_HREF = ""
+    <div class="tl-footer-rule"></div>
+    """)
+    footer_left, footer_right, footer_note = st.columns([1, 1.4, 1.6])
+    with footer_left:
+        st.page_link("pages/1_Privacy_Policy.py", label="Privacy Policy")
+    with footer_right:
+        st.page_link("pages/2_Terms_and_Conditions.py", label="Terms and Conditions")
+    with footer_note:
+        show(f'<div class="tl-footer-note">&copy; {date.today().year} TruthLens</div>')
