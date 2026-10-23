@@ -970,6 +970,22 @@ _VARIANT_CSS = """
         transform: none;
     }
 }
+
+/* TruthLens navbar click fix */
+.tl-nav {
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+}
+
+.tl-nav * {
+    pointer-events: auto !important;
+}
+
+.tl-nav a {
+    position: relative;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
 """
 
 TRUTHLENS_CSS = (
@@ -979,3 +995,4 @@ TRUTHLENS_CSS = (
     + _VARIANT_CSS.replace("__V__", "b")
     + "</style>"
 )
+
